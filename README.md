@@ -6,7 +6,7 @@ This is a VERY simple RESTful http server written in Rust. It serves one and one
 NB this piece of code is largely a proof-of-concept and as such it MUST NOT be used in a production environment. Yeah, it's not been pentested yet, so don't you use it in production env!
 
 ## How to build it
-First, get (rustup)[https://rustup.rs] going on your system, and then select nightly build as the default:
+First, get [rustup](https://rustup.rs) going on your system, and then select nightly build as the default:
 
 ```sh
 $ rustup default nightly
