@@ -1,36 +1,49 @@
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
 extern crate futures;
 extern crate hyper;
 
-use futures::future;
-use hyper::rt::{Future, Stream};
+use futures::{future, Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
-type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+#[derive(Debug,Serialize,Deserialize)]
+pub struct Reading {
+  pub timestamp: f64,
+  pub x: f64,
+  pub y: f64,
+  pub z: f64,
+}
 
-fn respond(req: Request<Body>) -> BoxFut {
-  let mut response = Response::new(Body::empty());
-
+fn respond(req: Request<Body>) -> Box<Future<Item=Response<Body>, Error=hyper::Error> + Send> {
   match (req.method(), req.uri().path()) {
     // Only accept POST at route /
     (&Method::POST, "/") => {
-      let mapping = req.into_body().map(|chunk| {
-        chunk
-          .iter()
-          .map(|byte| byte.to_ascii_uppercase())
-          .collect::<Vec<u8>>()
-      });
-      *response.body_mut() = Body::wrap_stream(mapping);
-    }
+      Box::new(req.into_body().concat2().map(|b| {
+        // Parse the request body as JSON
+        let readings: Vec<Reading> = serde_json::from_slice(&b).unwrap();
+        readings.iter().for_each(|reading| {
+          println!("{:?}", reading);
+        });
+        Response::builder()
+          .status(StatusCode::OK)
+          .body(Body::empty())
+          .unwrap()
+      }))
+    },
     // 404 NotFound
     _ => {
       println!("Got a {} hit at {}", req.method(), req.uri().path());
-      *response.body_mut() = Body::from(format!("Route {} was not found on this server", req.uri().path()));
-      *response.status_mut() = StatusCode::NOT_FOUND;
+      let body = format!("Route {} was not found on this server", req.uri().path());
+      Box::new(future::ok(Response::builder()
+                          .status(StatusCode::NOT_FOUND)
+                          .body(body.into())
+                          .unwrap()))
     }
   }
-
-  Box::new(future::ok(response))
 }
 
 fn main() {
