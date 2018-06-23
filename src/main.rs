@@ -12,7 +12,7 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Reading {
-  pub timestamp: f64,
+  pub ts: f64,
   pub x: f64,
   pub y: f64,
   pub z: f64,
@@ -24,7 +24,16 @@ fn respond(req: Request<Body>) -> Box<Future<Item=Response<Body>, Error=hyper::E
     (&Method::POST, "/") => {
       Box::new(req.into_body().concat2().map(|b| {
         // Parse the request body as JSON
-        let readings: Vec<Reading> = serde_json::from_slice(&b).unwrap();
+        let readings: Vec<Reading> = match serde_json::from_slice(&b) {
+          Ok(readings) => readings,
+          Err(error) => {
+            let body = format!("Error while parsing JSON: {}", error);
+            return Response::builder()
+              .status(StatusCode::UNPROCESSABLE_ENTITY)
+              .body(body.into())
+              .unwrap();
+          }
+        };
         readings.iter().for_each(|reading| {
           println!("{:?}", reading);
         });
