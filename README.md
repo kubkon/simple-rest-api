@@ -21,5 +21,5 @@ $ cargo run
 And you're up receving the data via the POST request!
 
 ## Who should take the blame
-Copyright (c) 2018 Jakub Konka
+Copyright (c) 2018 [Jakub Konka](http://www.jakubkonka.com)
 
