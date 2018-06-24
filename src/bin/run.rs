@@ -1,22 +1,13 @@
-#[macro_use]
-extern crate serde_derive;
-
 extern crate serde;
 extern crate serde_json;
 extern crate futures;
 extern crate hyper;
+extern crate simple_rest_api;
 
 use futures::{future, Future, Stream};
 use hyper::service::service_fn;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
-
-#[derive(Debug,Serialize,Deserialize)]
-pub struct Reading {
-  pub ts: f64,
-  pub x: f64,
-  pub y: f64,
-  pub z: f64,
-}
+use simple_rest_api::*;
 
 fn respond(req: Request<Body>) -> Box<Future<Item=Response<Body>, Error=hyper::Error> + Send> {
   match (req.method(), req.uri().path()) {
@@ -24,7 +15,7 @@ fn respond(req: Request<Body>) -> Box<Future<Item=Response<Body>, Error=hyper::E
     (&Method::POST, "/") => {
       Box::new(req.into_body().concat2().map(|b| {
         // Parse the request body as JSON
-        let readings: Vec<Reading> = match serde_json::from_slice(&b) {
+        let readings: Vec<models::NewReading> = match serde_json::from_slice(&b) {
           Ok(readings) => readings,
           Err(error) => {
             let body = format!("Error while parsing JSON: {}", error);
@@ -34,8 +25,11 @@ fn respond(req: Request<Body>) -> Box<Future<Item=Response<Body>, Error=hyper::E
               .unwrap();
           }
         };
-        readings.iter().for_each(|reading| {
-          println!("{:?}", reading);
+
+        let connection = establish_connection();
+        readings.into_iter().for_each(|reading| {
+          let r = create_reading(&connection, reading);
+          println!("{:?}", r);
         });
         Response::builder()
           .status(StatusCode::OK)
